@@ -33,6 +33,18 @@ namespace Fundoo.Controllers
 
             var result = _userBL.RegisterUserBL(registrationModel);
 
+            if (result == null)
+            {
+                return Conflict(
+                    new ResponseModel<RegistrationModel>
+                    {
+                        success = false,
+                        message = "Email already exists",
+                        data = null
+                    }
+                );
+            }
+
             var response = new ResponseModel<RegistrationModel>
             {
                 success = true,

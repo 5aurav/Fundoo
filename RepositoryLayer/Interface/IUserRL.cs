@@ -1,10 +1,11 @@
-﻿using ModelLayer;
+﻿using RepositoryLayer.Entity;
 
 namespace RepositoryLayer.Interface
 {
     public interface IUserRL
     {
-        public RegistrationModel RegisterUserRL(RegistrationModel registrationModel);
-        public string? LoginUserRL(LoginModel loginModel);
+        UserEntity RegisterUserRL(UserEntity userEntity);
+        UserEntity? GetUserByEmailRL(string email);
+        UserEntity UpdateUserRL(UserEntity userEntity);
     }
 }
