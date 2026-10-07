@@ -9,5 +9,11 @@ namespace BusinessLayer.Interface
 
         string? LoginUserBL(
             LoginModel loginModel);
+
+        Task<bool> ForgotPasswordBL(
+            ForgotPasswordModel forgotPasswordModel);
+
+        bool ResetPasswordBL(
+            ResetPasswordModel resetPasswordModel);
     }
 }

@@ -27,6 +27,12 @@ namespace RepositoryLayer.Service
                 .FirstOrDefault(user => user.Email == email);
         }
 
+        public UserEntity? GetUserByResetTokenRL(string token)
+        {
+            return fundooContext.Users
+                .FirstOrDefault(user => user.ResetToken == token);
+        }
+
         public UserEntity UpdateUserRL(UserEntity userEntity)
         {
             fundooContext.Users.Update(userEntity);

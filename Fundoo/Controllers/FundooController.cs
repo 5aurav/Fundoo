@@ -1,4 +1,5 @@
 using BusinessLayer.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ModelLayer;
 
@@ -92,6 +93,56 @@ namespace Fundoo.Controllers
                     data = token
                 }
             );
+        }
+        [HttpPost("forgotpassword")]
+        public async Task<IActionResult> ForgotPassword(
+            [FromBody] ForgotPasswordModel forgotPasswordModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(
+                    new ResponseModel<string>
+                    {
+                        success = false,
+                        message = "Invalid input",
+                        data = string.Empty
+                    }
+                );
+            }
+
+            await _userBL.ForgotPasswordBL(
+                forgotPasswordModel
+            );
+
+            return Ok(
+                new ResponseModel<string>
+                {
+                    success = true,
+                    message = "If an account exists for this email, a password reset email has been sent.",
+                    data = string.Empty
+                }
+            );
+        }
+        [Authorize]
+        [HttpPost("resetpassword")]
+        public IActionResult ResetPassword(
+             ResetPasswordModel resetPasswordModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = _userBL.ResetPasswordBL(
+                resetPasswordModel
+            );
+
+            if (!result)
+            {
+                return BadRequest("Invalid or expired reset token");
+            }
+
+            return Ok("Password reset successfully");
         }
     }
 }
