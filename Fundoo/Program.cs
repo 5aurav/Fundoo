@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using RepositoryLayer.Context;
 using RepositoryLayer.Entity;
 using RepositoryLayer.Interface;
+using RepositoryLayer.Repository;
 using RepositoryLayer.Service;
 using System.Text;
 
@@ -30,6 +31,8 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<IUserBL, UserBL>();
 builder.Services.AddScoped<IUserRL, UserRL>();
+builder.Services.AddScoped<INotesBL, NotesBL>();
+builder.Services.AddScoped<INotesRL, NotesRL>();
 
 builder.Services.AddScoped<IPasswordHasher<UserEntity>, PasswordHasher<UserEntity>>();
 
