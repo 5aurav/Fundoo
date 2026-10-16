@@ -2,6 +2,7 @@ using BusinessLayer.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ModelLayer;
+using NLog;
 
 namespace Fundoo.Controllers
 {
@@ -10,6 +11,7 @@ namespace Fundoo.Controllers
     public class FundooController : ControllerBase
     {
         private readonly IUserBL _userBL;
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         public FundooController(IUserBL userBL)
         {
@@ -20,6 +22,7 @@ namespace Fundoo.Controllers
         public ActionResult<ResponseModel<RegistrationModel>> RegisterUser(
             [FromBody] RegistrationModel registrationModel)
         {
+            Logger.Info("Register User API called");
             if (!ModelState.IsValid)
             {
                 return BadRequest(
@@ -123,7 +126,6 @@ namespace Fundoo.Controllers
                 }
             );
         }
-        [Authorize]
         [HttpPost("resetpassword")]
         public IActionResult ResetPassword(
              ResetPasswordModel resetPasswordModel)

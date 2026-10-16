@@ -5,13 +5,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace BusinessLayer.Service
+namespace Middleware.Services.JWT
 {
-    public class JwtService
+    public class JwtTokenService : IJwtTokenService
     {
         private readonly IConfiguration _configuration;
 
-        public JwtService(IConfiguration configuration)
+        public JwtTokenService(IConfiguration configuration)
         {
             _configuration = configuration;
         }
@@ -75,17 +75,35 @@ namespace BusinessLayer.Service
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
         public string GenerateResetToken(string email, int minutes = 15)
         {
+            var key = _configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new InvalidOperationException(
+                    "JWT Key is not configured."
+                );
+            }
+
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, email),
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim("token_type", "password_reset")
-    };
-            var _securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            };
+
+            var securityKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(key)
+            );
+
             var now = DateTime.UtcNow;
-            var creds = new SigningCredentials(_securityKey, SecurityAlgorithms.HmacSha256);
+
+            var credentials = new SigningCredentials(
+                securityKey,
+                SecurityAlgorithms.HmacSha256
+            );
 
             var jwt = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
@@ -93,39 +111,80 @@ namespace BusinessLayer.Service
                 claims: claims,
                 notBefore: now,
                 expires: now.AddMinutes(minutes),
-                signingCredentials: creds
+                signingCredentials: credentials
             );
 
             return new JwtSecurityTokenHandler().WriteToken(jwt);
         }
 
-        public bool TryValidateResetToken(string token, out string? email)
+        public bool TryValidateResetToken(
+            string token,
+            out string? email)
         {
             email = null;
-            if (string.IsNullOrWhiteSpace(token)) return false;
-            var _securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return false;
+            }
+
+            var key = _configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new InvalidOperationException(
+                    "JWT Key is not configured."
+                );
+            }
+
+            var securityKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(key)
+            );
 
             var handler = new JwtSecurityTokenHandler();
+
             var parameters = new TokenValidationParameters
             {
-                ValidateIssuer = !string.IsNullOrWhiteSpace(_configuration["Jwt:Issuer"]),
+                ValidateIssuer =
+                    !string.IsNullOrWhiteSpace(_configuration["Jwt:Issuer"]),
+
                 ValidIssuer = _configuration["Jwt:Issuer"],
-                ValidateAudience = !string.IsNullOrWhiteSpace(_configuration["Jwt:Audience"]),
+
+                ValidateAudience =
+                    !string.IsNullOrWhiteSpace(_configuration["Jwt:Audience"]),
+
                 ValidAudience = _configuration["Jwt:Audience"],
+
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = _securityKey,
+                IssuerSigningKey = securityKey,
+
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.FromMinutes(1)
             };
 
             try
             {
-                var principal = handler.ValidateToken(token, parameters, out _);
-                email = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
-                        ?? principal.FindFirst(ClaimTypes.Email)?.Value;
-                return email != null && principal.HasClaim(c => c.Type == "token_type" && c.Value == "password_reset");
+                var principal = handler.ValidateToken(
+                    token,
+                    parameters,
+                    out _
+                );
+
+                email =
+                    principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                    ?? principal.FindFirst(ClaimTypes.Email)?.Value;
+
+                return email != null &&
+                       principal.HasClaim(
+                           c => c.Type == "token_type" &&
+                                c.Value == "password_reset"
+                       );
             }
-            catch
+            catch (SecurityTokenException)
+            {
+                return false;
+            }
+            catch (ArgumentException)
             {
                 return false;
             }
