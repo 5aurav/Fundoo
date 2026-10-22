@@ -1,119 +1,92 @@
 ﻿
 using BusinessLayer.Interface;
+using BusinessLayer.Notes.Commands;
+using BusinessLayer.Notes.Queries;
 using ModelLayer;
 using RepositoryLayer.Entity;
-using RepositoryLayer.Interface;
 
 namespace BusinessLayer.Service
 {
     public class NotesBL : INotesBL
     {
-        private readonly INotesRL _notesRL;
+        private readonly AddNoteCommandHandler _addNoteHandler;
+        private readonly EditNoteCommandHandler _editNoteHandler;
+        private readonly DeleteNoteCommandHandler _deleteNoteHandler;
+        private readonly ToggleArchiveCommandHandler _toggleArchiveHandler;
+        private readonly ToggleTrashCommandHandler _toggleTrashHandler;
+        private readonly GetAllNotesQueryHandler _getAllNotesHandler;
+        private readonly GetNoteByIdQueryHandler _getNoteByIdHandler;
 
-        public NotesBL(INotesRL notesRL)
+        public NotesBL(
+            AddNoteCommandHandler addNoteHandler,
+            EditNoteCommandHandler editNoteHandler,
+            DeleteNoteCommandHandler deleteNoteHandler,
+            ToggleArchiveCommandHandler toggleArchiveHandler,
+            ToggleTrashCommandHandler toggleTrashHandler,
+            GetAllNotesQueryHandler getAllNotesHandler,
+            GetNoteByIdQueryHandler getNoteByIdHandler)
         {
-            _notesRL = notesRL;
+            _addNoteHandler = addNoteHandler;
+            _editNoteHandler = editNoteHandler;
+            _deleteNoteHandler = deleteNoteHandler;
+            _toggleArchiveHandler = toggleArchiveHandler;
+            _toggleTrashHandler = toggleTrashHandler;
+            _getAllNotesHandler = getAllNotesHandler;
+            _getNoteByIdHandler = getNoteByIdHandler;
         }
 
-        public async Task<NoteEntity> AddNoteAsync(
-            NoteCreationModel model, int userId)
+        public Task<NoteEntity> AddNoteAsync(
+            NoteCreationModel model,
+            int userId)
         {
-            var note = new NoteEntity
-            {
-                Title = model.Title,
-                Description = model.Description,
-                Colour = model.Colour,
-                UserId = userId,
-                IsArchived = false,
-                IsDeleted = false
-            };
-
-            return await _notesRL.AddNoteAsync(note);
+            return _addNoteHandler.Handle(
+                new AddNoteCommand(model, userId));
         }
 
-        public async Task<List<NoteEntity>> ViewNotesAsync(int userId)
+        public Task<List<NoteEntity>> ViewNotesAsync(int userId)
         {
-            return await _notesRL.ViewNotesAsync(userId);
+            return _getAllNotesHandler.Handle(
+                new GetAllNotesQuery(userId));
         }
 
-
-        public async Task<NoteEntity?> ViewNoteByIdAsync(
-            NotesIdModel model, int userId)
+        public Task<NoteEntity?> ViewNoteByIdAsync(
+            NotesIdModel model,
+            int userId)
         {
-            var note = await _notesRL.GetNoteByIdAsync(
-                model.NoteId, userId);
-
-            if (note == null || note.IsDeleted || note.IsArchived)
-                return null;
-
-            return note;
+            return _getNoteByIdHandler.Handle(
+                new GetNoteByIdQuery(model, userId));
         }
 
-
-        public async Task<NoteEntity?> EditNoteAsync(
-            EditNotesModel model, int userId)
+        public Task<NoteEntity?> EditNoteAsync(
+            EditNotesModel model,
+            int userId)
         {
-            var note = await _notesRL.GetNoteByIdAsync(
-                model.NoteId, userId);
-
-            if (note == null || note.IsDeleted)
-                return null;
-
-            note.Title = model.Title;
-            note.Description = model.Description;
-            note.Colour = model.Colour;
-
-            return await _notesRL.UpdateNoteAsync(note);
+            return _editNoteHandler.Handle(
+                new EditNoteCommand(model, userId));
         }
 
-
-        public async Task<bool> DeleteNoteAsync(
-            NotesIdModel model, int userId)
+        public Task<bool> DeleteNoteAsync(
+            NotesIdModel model,
+            int userId)
         {
-            var note = await _notesRL.GetNoteByIdAsync(
-                model.NoteId, userId);
-
-            if (note == null || !note.IsDeleted)
-                return false;
-
-            await _notesRL.PermanentlyDeleteNoteAsync(note);
-
-            return true;
+            return _deleteNoteHandler.Handle(
+                new DeleteNoteCommand(model, userId));
         }
 
-
-        public async Task<bool> ToggleArchiveAsync(
-            NotesIdModel model, int userId)
+        public Task<bool> ToggleArchiveAsync(
+            NotesIdModel model,
+            int userId)
         {
-            var note = await _notesRL.GetNoteByIdAsync(
-                model.NoteId, userId);
-
-            if (note == null || note.IsDeleted)
-                return false;
-
-            note.IsArchived = !note.IsArchived;
-
-            await _notesRL.UpdateNoteAsync(note);
-            return true;
+            return _toggleArchiveHandler.Handle(
+                new ToggleArchiveCommand(model, userId));
         }
 
-
-        public async Task<bool> ToggleTrashAsync(
-            NotesIdModel model, int userId)
+        public Task<bool> ToggleTrashAsync(
+            NotesIdModel model,
+            int userId)
         {
-            var note = await _notesRL.GetNoteByIdAsync(
-                model.NoteId, userId);
-
-            if (note == null)
-                return false;
-
-            note.IsDeleted = !note.IsDeleted;
-
-            await _notesRL.UpdateNoteAsync(note);
-
-            return true;
+            return _toggleTrashHandler.Handle(
+                new ToggleTrashCommand(model, userId));
         }
-
     }
 }
-

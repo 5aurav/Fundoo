@@ -1,20 +1,26 @@
 using BusinessLayer.Interface;
+using BusinessLayer.Notes.Commands;
+using BusinessLayer.Notes.Queries;
 using BusinessLayer.Service;
+using BusinessLayer.User.Commands;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Middleware.ExceptionHandling;
+using Middleware.Services.Cache;
 using Middleware.Services.Email;
+using Middleware.Services.Hashing;
 using Middleware.Services.JWT;
 using NLog.Web;
-using Middleware.ExceptionHandling;
 using RepositoryLayer.Context;
-using RepositoryLayer.Entity;
 using RepositoryLayer.Interface;
 using RepositoryLayer.Repository;
 using RepositoryLayer.Service;
+using StackExchange.Redis;
 using System.Text;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,14 +41,32 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<IUserBL, UserBL>();
+
+builder.Services.AddScoped<RegisterUserCommandHandler>();
+builder.Services.AddScoped<LoginUserCommandHandler>();
+builder.Services.AddScoped<ForgotPasswordCommandHandler>();
+builder.Services.AddScoped<ResetPasswordCommandHandler>(); 
+
 builder.Services.AddScoped<IUserRL, UserRL>();
+
+builder.Services.AddScoped<AddNoteCommandHandler>();
+builder.Services.AddScoped<EditNoteCommandHandler>();
+builder.Services.AddScoped<DeleteNoteCommandHandler>();
+builder.Services.AddScoped<ToggleArchiveCommandHandler>();
+builder.Services.AddScoped<ToggleTrashCommandHandler>();
+
+builder.Services.AddScoped<GetAllNotesQueryHandler>();
+builder.Services.AddScoped<GetNoteByIdQueryHandler>();
+
 builder.Services.AddScoped<INotesBL, NotesBL>();
+
+
 builder.Services.AddScoped<INotesRL, NotesRL>();
 
-builder.Services.AddScoped<IPasswordHasher<UserEntity>, PasswordHasher<UserEntity>>();
-
+builder.Services.AddScoped<IPasswordHashing, PasswordHashing>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<RegisterUserCommandHandler>();
 
 builder.Services.AddDbContext<FundooContext>(options =>
 {
@@ -129,6 +153,38 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+
+var redisConnection =
+    builder.Configuration["Redis:ConnectionString"];
+
+if (string.IsNullOrWhiteSpace(redisConnection))
+{
+    if (builder.Environment.IsProduction())
+    {
+        throw new InvalidOperationException(
+            "Redis:ConnectionString must be configured in production.");
+    }
+
+    builder.Services.AddDistributedMemoryCache();
+}
+else
+{
+    var redisOptions =
+        ConfigurationOptions.Parse(redisConnection);
+
+    redisOptions.AbortOnConnectFail = false;
+    redisOptions.ConnectTimeout = 5000;
+
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.ConfigurationOptions = redisOptions;
+        options.InstanceName = "fundoo:";
+    });
+}
+
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+
 
 var app = builder.Build();
 

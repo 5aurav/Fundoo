@@ -19,7 +19,7 @@ namespace RepositoryLayer.Repository
             await _context.Notes.AddAsync(note);
             await _context.SaveChangesAsync();
 
-            return null;
+            return note;
         }
 
         public async Task<List<NoteEntity>> ViewNotesAsync(int userId)
